@@ -60,7 +60,7 @@ Decode is memory-bound by 90 W, so 100 W buys prefill only. The kept profile is 
 - **At 70 W the card is power-capped the whole time.** The core sags to about 1 GHz under load. A memory offset at 70 W just takes watts from the core.
 - **Power first, then memory.** Going from 70 W to 90 W gave +20% prefill. At 90 W, a +20% memory offset added +12% decode while the core clock fell 15%.
 - **NVML memory offsets are in double-data-rate units.** +1800 is about +10% and +3600 about +20%. The kept +3599 reads 10800 MHz.
-- **VRAM ECC can be turned on live,** with `nvidia-smi -e 1`, then unloading `nvidia_drm` and `nvidia_modeset`, `nvidia-smi -r`, and reloading. The override survived the GPU reset. Under real load at 90 W it has shown 0 corrected and 0 uncorrected errors.
+- **VRAM ECC can be turned on live,** with `nvidia-smi -e 1`, then unloading `nvidia_drm` and `nvidia_modeset`, `nvidia-smi -r`, and reloading. The override survived the GPU reset. In about seven hours of real load at 90 W with ECC on, it showed 0 corrected and 0 uncorrected errors. ECC was then turned off again for benchmarking, and the card runs with it off.
 
 ## Traps
 
