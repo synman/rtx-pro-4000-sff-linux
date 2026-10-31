@@ -12,4 +12,6 @@ below is redistributed here.
 | NVML (`nvmlDeviceSetClockOffsets`) | NVIDIA, part of the driver | NVIDIA driver license | Called through `ctypes` by `tools/nvml_offsets.py` |
 
 Everything in this repo was written for it by synman under MIT: `build/`, `scripts/`, `systemd/`, `config/`, `tools/`
-and `docs/`. It covers the Debian build path, per-kernel install, the live swap, the guarded profile, and the findings.
+and `docs/`. The modules you build combine NVIDIA's GPL-2.0 source with the GPL-3.0 patch. They are for your own machine. Sharing the built `.ko` files would be redistribution under those licenses.
+
+The repo covers the Debian build path, per-kernel install, the live swap, the guarded profile, and the findings.

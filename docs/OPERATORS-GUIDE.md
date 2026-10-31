@@ -114,7 +114,7 @@ Skip this, and the new kernel boots at stock 70 W. That is safe, because the pro
 | To | Do |
 |---|---|
 | Stock now | Stop the users. `rmmod nvidia_peermem nvidia_drm nvidia_modeset nvidia_uvm nvidia`, ignoring "not loaded". Delete this kernel's lines: `sed -i "/ $(uname -r) extra\/vix$/d" /etc/depmod.d/nvidia-vix.conf`. Run `depmod -a`, then `modprobe` each of `nvidia nvidia_uvm nvidia_modeset nvidia_drm`, and restart the users |
-| Stock at boot | Delete `/etc/modprobe.d/nvidia-vbios-override.conf` and reboot. With no image the patched module loads at stock 70 W, as observed on the reference card |
+| Stock at boot | Delete `/etc/modprobe.d/nvidia-vbios-override.conf` and reboot. The patched module then has no image to load and should run at stock. Confirm max_limit reads 70 W |
 | Everything | Do the table's first row or reboot, then run the block below |
 
 ```bash
