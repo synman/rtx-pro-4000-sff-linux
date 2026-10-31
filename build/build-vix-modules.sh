@@ -17,7 +17,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 REPO=$(cd "$HERE/.." && pwd -P)
 WORK=$(mkdir -p "${1:-$REPO/work}" && cd "${1:-$REPO/work}" && pwd -P)
 KREL=${KREL:-$(uname -r)}
-NV_VERSION=${NV_VERSION:-$(dpkg-query -W -f='${Version}' nvidia-kernel-open-dkms 2>/dev/null | cut -d- -f1)}
+NV_VERSION=${NV_VERSION:-$(dpkg-query -W -f='${Version}' nvidia-kernel-open-dkms 2>/dev/null | sed 's/^[0-9]*://' | cut -d- -f1)}
 VIX_COMMIT=${VIX_COMMIT:-418942a}
 MOK_KEY=${MOK_KEY:-/var/lib/dkms/mok.key}
 MOK_CERT=${MOK_CERT:-/var/lib/dkms/mok.pub}
@@ -38,7 +38,7 @@ if [ ! -d "$SRC" ]; then
   git -C "$SRC" apply --check "$PWD/nvidia-linux-vbios-vix-loader/$PATCH"
   git -C "$SRC" apply "$PWD/nvidia-linux-vbios-vix-loader/$PATCH"
 fi
-grep -q RmLinuxVbiosOverride "$SRC/src/nvidia/arch/nvalloc/unix/src/registry.c" || { echo "patch not in the tree"; exit 1; }
+grep -q RmLinuxVbiosOverride "$SRC/src/nvidia/arch/nvalloc/unix/src/registry.c" || { echo "patch not in $WORK/$SRC; delete that directory and rerun"; exit 1; }
 
 # Build the way DKMS does. SYSSRC=/usr/src/linux-headers-<krel> fails on Debian ("stdarg.h: No such file"),
 # because Debian splits its headers into -common and -<flavour> packages; KERNEL_UNAME finds both.

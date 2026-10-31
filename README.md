@@ -2,7 +2,7 @@
 
 Scripts and notes for running an NVIDIA RTX PRO 4000 Blackwell SFF above its 70 W firmware cap on Debian with Secure Boot on.
 The card reads an edited VBIOS image from system RAM at driver load, and the EEPROM is never flashed.
-The pieces here make that survive reboots, fall back to stock safely, and survive kernel updates.
+The pieces here make that survive reboots and fall back to stock safely. A kernel update needs one rebuild before you reboot into it.
 
 Maintained by synman. Tested on Debian 13 with NVIDIA's apt-repo driver `615.71.10`, kernels `7.2.9` and `7.2.11` from trixie-backports, Secure Boot on.
 
@@ -34,17 +34,21 @@ gets flashed can brick a card. Make your own from your own card, as the guide sh
 - Debian with NVIDIA's apt-repo open driver (`nvidia-kernel-open-dkms`), and headers for every kernel you build for.
 - Under Secure Boot: an enrolled MOK. Debian's DKMS key at `/var/lib/dkms/mok.key` works.
 - An edited, normalized VBIOS image for YOUR card. See [docs/OPERATORS-GUIDE.md](docs/OPERATORS-GUIDE.md), section 2.
-- `git`, `gcc` matching the kernel's compiler, and `make`.
+- `git`, `make`, `gcc` matching the kernel's compiler, `linux-kbuild` (for `sign-file`), `binutils` (for `strings`) and network access for the build.
+- `nvidia-persistenced`, which the profile service runs after.
+- Panchovix's [Vix Editor](https://github.com/Panchovix/nvidia-vbios-vix-editor) (`nvbios`), to make the image.
 
 ## Quick start
 
+Run as root (`sudo -i`), so variables like `KREL=` reach the scripts:
+
 ```bash
-sudo ./build/build-vix-modules.sh                       # BUILD-OK work/modules-<nv>-vix-<krel>
-sudo ./scripts/install-vix-modules.sh work/modules-*-vix-$(uname -r)
-sudo install -D -m 644 your-90w.bin /lib/firmware/nvidia/<nv-version>/vbios-override/gpu0-90w.bin
-sudo install -m 644 config/nvidia-vbios-override.conf.example /etc/modprobe.d/nvidia-vbios-override.conf   # edit pci= and the path
-sudo install -m 644 config/rtx-power.conf.example /etc/rtx-power.conf                                     # edit POWER_LIMIT_W etc.
-sudo ./scripts/swap-live.sh && tail -3 /var/log/rtx-power.log   # SWAP-OK, or just reboot
+./build/build-vix-modules.sh                       # ends BUILD-OK <abs-path>/work/modules-<nv>-vix-<krel>
+./scripts/install-vix-modules.sh work/modules-*-vix-$(uname -r)
+install -D -m 644 gpu0-90w.bin /lib/firmware/nvidia/<nv-version>/vbios-override/gpu0-90w.bin
+install -m 644 config/nvidia-vbios-override.conf.example /etc/modprobe.d/nvidia-vbios-override.conf   # edit pci= (twice), Size and the path
+install -m 644 config/rtx-power.conf.example /etc/rtx-power.conf                                     # set POWER_LIMIT_W, offsets, users
+./scripts/swap-live.sh; tail -12 /var/log/rtx-power.log   # ends SWAP-OK; or just reboot
 ```
 
 Then copy the repo to `/opt/rtx-power` and enable `systemd/gpu-power-profile.service`.
@@ -71,8 +75,9 @@ Full tables: [docs/FINDINGS.md](docs/FINDINGS.md). Write-up: https://www.shellwa
 
 ## Undo
 
-Delete `/etc/modprobe.d/nvidia-vbios-override.conf`, `/etc/depmod.d/nvidia-vix.conf` and `/lib/modules/*/extra/vix`.
-Then run `depmod -a`, disable the service and reboot. The card is back to stock 70 W, because nothing was ever written to it.
+See the rollback table in [docs/OPERATORS-GUIDE.md](docs/OPERATORS-GUIDE.md), section 8. In short, remove the
+modprobe.d file, the depmod.d file and every `extra/vix`, rerun depmod for each kernel, and reboot.
+The card is back to stock 70 W, because nothing was ever written to it.
 
 ## License
 

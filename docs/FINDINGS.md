@@ -64,7 +64,7 @@ Decode is memory-bound by 90 W, so 100 W buys prefill only. The kept profile is 
 
 ## Traps
 
-- **A kernel update silently drops the override.** DKMS rebuilds the stock modules for the new kernel, and the vix modules exist only for the old one. The card boots at 70 W, and `gpu-power-profile.sh` logs "override not live". Build for the new kernel BEFORE rebooting into it: `KREL=<new> ./build/build-vix-modules.sh`, then install.
+- **A kernel update silently drops the override.** There is no apt or DKMS hook. DKMS rebuilds the stock modules for the new kernel, and the vix modules exist only for the old one. The card boots at 70 W, and `gpu-power-profile.sh` logs "override not live". Build for the new kernel BEFORE rebooting into it: `KREL=<new> ./build/build-vix-modules.sh`, then install.
 - **Build with `KERNEL_UNAME`, not `SYSSRC`.** On Debian, `SYSSRC=/usr/src/linux-headers-<krel>` fails with `stdarg.h: No such file`, because the headers are split into `-common` and `-amd64`. DKMS uses `KERNEL_UNAME`.
 - **The depmod override needs a `search` line.** `override nvidia <krel> extra/vix` alone does nothing, because depmod never indexes `extra/` without `search extra/vix updates built-in`.
 - **Anything with `/dev/nvidia*` open blocks `rmmod`,** including an interactive `btop` in an SSH session. List the holders from `/proc/*/fd` first.

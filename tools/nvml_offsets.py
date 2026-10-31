@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""Read or set GPU clock offsets via NVML (stock firmware). Usage: nvml_offsets.py get | set <gfx_mhz> <mem_mhz>"""
+"""Read or set GPU clock offsets via NVML (stock firmware).
+Usage: nvml_offsets.py [-i GPU_INDEX] get | set <gfx_mhz> <mem_mhz>
+Memory offsets are in double-data-rate units: +1800 is about +10% on this card."""
 import ctypes as C, sys
+
+IDX = 0
+if sys.argv[1:2] == ["-i"] and len(sys.argv) > 2:
+    IDX = int(sys.argv[2]); del sys.argv[1:3]
 
 nv = C.CDLL("libnvidia-ml.so.1")
 GFX, MEM = 0, 2           # NVML_CLOCK_GRAPHICS, NVML_CLOCK_MEM
@@ -22,7 +28,7 @@ def ck(rc, what):
 
 
 ck(nv.nvmlInit_v2(), "init")
-dev = C.c_void_p(); ck(nv.nvmlDeviceGetHandleByIndex_v2(0, C.byref(dev)), "handle")
+dev = C.c_void_p(); ck(nv.nvmlDeviceGetHandleByIndex_v2(IDX, C.byref(dev)), "handle")
 
 
 def get(t, p):

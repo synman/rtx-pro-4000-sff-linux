@@ -11,7 +11,7 @@ CONF=${1:-/etc/rtx-power.conf}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 MAX=$(nvidia-smi -i "$GPU_INDEX" --query-gpu=power.max_limit --format=csv,noheader,nounits | cut -d. -f1)
 if [ -n "$POWER_LIMIT_W" ] && [ "${MAX:-0}" -ge "$POWER_LIMIT_W" ]; then
-  nvidia-smi -i "$GPU_INDEX" -pl "$POWER_LIMIT_W" && python3 "$HERE/../tools/nvml_offsets.py" set "$GFX_OFFSET" "$MEM_OFFSET"
+  nvidia-smi -i "$GPU_INDEX" -pl "$POWER_LIMIT_W" && python3 "$HERE/../tools/nvml_offsets.py" -i "$GPU_INDEX" set "$GFX_OFFSET" "$MEM_OFFSET"
 else
   echo "override not live (max limit ${MAX:-?} W): leaving stock limits and zero offsets"
 fi

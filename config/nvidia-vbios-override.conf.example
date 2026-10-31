@@ -1,9 +1,11 @@
 # /etc/modprobe.d/nvidia-vbios-override.conf
 # Load an edited VBIOS image into the GPU at driver load, from system RAM. Nothing is flashed.
-# Only the vix-patched nvidia module reads these keys; the stock module ignores them, so a stock boot is safe.
-#   pci=        the card's PCI address (lspci -D -d 10de:)
-#   Size=       the image size in bytes (one bank: 1966080 on the RTX PRO 4000 Blackwell SFF)
-#   Image=      path relative to /lib/firmware/nvidia/
+# Only the vix-patched nvidia module reads these keys. The stock module ignores unknown registry keys,
+# which is what a kernel without vix modules boots with, observed on the reference card at 70 W.
+# Edit all three before use; nothing here is checked:
+#   pci=                         the card's PCI address (lspci -D -d 10de:), on BOTH lines
+#   RmLinuxVbiosOverrideSize=    the image size in bytes: stat -c %s <image> (1966080 on the reference card)
+#   RmLinuxVbiosOverrideImage=   path relative to /lib/firmware/nvidia/; replace <driver-version>
 # nvidia is not in Debian's initramfs, so no initramfs rebuild is needed after editing this file.
 options nvidia NVreg_RegistryDwordsPerDevice="pci=0000:02:00.0;RmLinuxVbiosOverride=2;RmLinuxVbiosOverrideSize=1966080"
 options nvidia NVreg_RegistryBinaryFilePerDevice="pci=0000:02:00.0;RmLinuxVbiosOverrideImage=<driver-version>/vbios-override/gpu0-90w.bin"

@@ -1,7 +1,7 @@
 # Operator's guide
 
 These steps take you from a stock card to a persisted 90 W profile, then cover how to keep it working and how to undo it.
-Every command runs as root. Read [FINDINGS.md](FINDINGS.md), especially the slot-power caveat, first.
+Every command runs in a root shell (`sudo -i`): `KREL=x sudo ./build…` would lose `KREL`. Read [FINDINGS.md](FINDINGS.md), especially the slot-power caveat, first.
 
 ## 1. Preflight
 
@@ -19,12 +19,15 @@ If the card drives your display, stop here. The live swap unloads its driver.
 
 The guide does not ship images. Make one from your own card with Panchovix's Vix Editor (`nvbios`).
 
+Get the editor from https://github.com/Panchovix/nvidia-vbios-vix-editor and follow its install steps.
+
 1. Back up the full EEPROM. NVFlash `--save` and sysfs both fail to give it, so follow Piszczek's gdb method: capture NVFlash's read buffer twice and compare the SHA-256.
-   Under Secure Boot, `/dev/mem` is blocked by lockdown. Lifting that once (`mokutil --disable-validation`, then MokManager) is your call. Turn it back on afterwards.
+   Under Secure Boot, `/dev/mem` is blocked by lockdown. Lifting that once is your call: `mokutil --disable-validation`, reboot, confirm in MokManager.
+   Turn it back on afterwards with `mokutil --enable-validation`, reboot and confirm again. Check with `mokutil --sb-state`.
 2. Slice one bank. On this card that is `[0x3c000:0x21c000]`, 1,966,080 bytes. The editor rejects the full two-bank dump.
 3. Read the fields with `nvbios fields bank.rom`, then edit only the seven power fields:
    `nvbios edit bank.rom bank-90w.rom --set power_max_w=90 --set board_fixed_rated_w=90 --set slot_power_max_w=90 --set slot_power_rated_w=90 --set input_current_max_ma=8490 --set input_current_rated_ma=8490 --set input_current_policy7_limit_ma=8490`.
-   Scale the three current values as `6600 x W / 70`.
+   Scale the three current values as `6600 x W / 70`, rounded up to a multiple of 10: 8485.7 becomes 8490.
 4. Re-read every field, and confirm only those seven changed.
 5. Normalize it into a loader payload: `nvbios normalize bank-90w.rom gpu0-90w.bin`.
 6. Install it: `install -D -m 644 gpu0-90w.bin /lib/firmware/nvidia/<driver-version>/vbios-override/gpu0-90w.bin`.
@@ -34,7 +37,7 @@ The guide does not ship images. Make one from your own card with Panchovix's Vix
 ## 3. Build and install the modules
 
 ```bash
-./build/build-vix-modules.sh                   # ends BUILD-OK work/modules-<nv>-vix-<krel>; log work/build-<krel>.log
+./build/build-vix-modules.sh                   # ends BUILD-OK <abs-path>/work/modules-<nv>-vix-<krel>; log work/build-<krel>.log
 ./scripts/install-vix-modules.sh work/modules-<nv>-vix-$(uname -r)   # ends INSTALL-OK <krel> -> .../extra/vix/nvidia.ko
 ```
 
@@ -48,8 +51,8 @@ install -m 644 config/nvidia-vbios-override.conf.example /etc/modprobe.d/nvidia-
 install -m 644 config/rtx-power.conf.example /etc/rtx-power.conf
 ```
 
-- In the modprobe file, set `pci=`, `RmLinuxVbiosOverrideSize` (your image's size in bytes) and the image path.
-- In `rtx-power.conf`, set `POWER_LIMIT_W`, `MEM_OFFSET`, `GFX_OFFSET`, and the users to stop.
+- In the modprobe file, set `pci=` on both lines, `RmLinuxVbiosOverrideSize` (`stat -c %s` of your image) and the image path, replacing `<driver-version>`. Nothing checks these. A wrong value shows up as `SWAP-NOT-LIVE`.
+- In `rtx-power.conf`, set `GPU_INDEX`, `POWER_LIMIT_W`, `MEM_OFFSET`, `GFX_OFFSET`, and the users to stop: `STOP_CONTAINERS`, `STOP_SERVICES`, `KILL_COMMS`, `HEALTH_CONTAINER`. The example ships no overclock.
 
 Start at stock offsets and step up. Each step deserves a sustained load while you watch Xid errors, AER, temperature and output hashes.
 
@@ -58,20 +61,23 @@ Start at stock offsets and step up. Each step deserves a sustained load while yo
 Either reboot, or swap live:
 
 ```bash
-./scripts/swap-live.sh && tail -12 /var/log/rtx-power.log
+./scripts/swap-live.sh; tail -12 /var/log/rtx-power.log
 ```
 
 | Result | Meaning |
 |---|---|
-| `SWAP-OK` | Patched modules loaded, profile applied, users restarted |
-| `SWAP-ROLLED-BACK` | The patched modules failed to load. The depmod file was restored and stock modules loaded |
-| `SWAP-ABORTED` | A check failed before any unload, or something still held `/dev/nvidia*`. Users were restarted |
+| `SWAP-OK` | Patched modules loaded, max_limit reached `POWER_LIMIT_W`, profile applied, users restarted |
+| `SWAP-NOT-LIVE` | Patched modules loaded, but the image did not raise max_limit. Check the modprobe file. The profile stayed stock |
+| `SWAP-ROLLED-BACK` | The patched modules failed to load. This kernel's override lines were removed, a backup kept, and stock loaded |
+| `SWAP-ABORTED` | A check failed, something still held `/dev/nvidia*`, or `rmmod nvidia` failed. Anything unloaded was loaded again and users restarted |
+
+The script writes only to the log. All four outcomes except `SWAP-OK` exit 1.
 
 Then check by hand:
 
 ```bash
-nvidia-smi --query-gpu=power.limit,power.max_limit,power.draw --format=csv   # 90.00 W, 90.00 W
-python3 tools/nvml_offsets.py get                                            # mem P0/P2 = your offset
+nvidia-smi --query-gpu=power.limit,power.max_limit,power.draw --format=csv   # limit and max_limit 90.00 W
+python3 tools/nvml_offsets.py -i 0 get                                       # mem P0/P2 = your offset
 dmesg | grep -E "NVRM: Xid|AER" | tail
 ```
 
@@ -107,9 +113,21 @@ Skip this, and the new kernel boots at stock 70 W. That is safe, because the pro
 
 | To | Do |
 |---|---|
-| Stock now | Stop the users, then `rmmod nvidia_drm nvidia_modeset nvidia_uvm nvidia`. Remove this kernel's lines from `/etc/depmod.d/nvidia-vix.conf`, run `depmod -a`, then `modprobe nvidia` |
-| Stock at boot | Delete `/etc/modprobe.d/nvidia-vbios-override.conf` and reboot. The patched module without an image behaves as stock |
-| Everything | Also delete `/etc/depmod.d/nvidia-vix.conf`, `/lib/modules/*/extra/vix`, the service, `/opt/rtx-power` and `/etc/rtx-power.conf`. Run `depmod -a` and reboot |
+| Stock now | Stop the users. `rmmod nvidia_peermem nvidia_drm nvidia_modeset nvidia_uvm nvidia`, ignoring "not loaded". Delete this kernel's lines: `sed -i "/ $(uname -r) extra\/vix$/d" /etc/depmod.d/nvidia-vix.conf`. Run `depmod -a`, then `modprobe` each of `nvidia nvidia_uvm nvidia_modeset nvidia_drm`, and restart the users |
+| Stock at boot | Delete `/etc/modprobe.d/nvidia-vbios-override.conf` and reboot. With no image the patched module loads at stock 70 W, as observed on the reference card |
+| Everything | Do the table's first row or reboot, then run the block below |
+
+```bash
+systemctl disable --now gpu-power-profile.service
+rm -f /etc/systemd/system/gpu-power-profile.service && systemctl daemon-reload
+rm -f /etc/modprobe.d/nvidia-vbios-override.conf /etc/depmod.d/nvidia-vix.conf /etc/depmod.d/nvidia-vix.conf.bak-*
+rm -rf /lib/modules/*/extra/vix /opt/rtx-power /etc/rtx-power.conf /lib/firmware/nvidia/*/vbios-override
+for k in /lib/modules/*/; do k=${k%/}; k=${k##*/}; [ -e "/lib/modules/$k/modules.dep" ] && depmod -a "$k"; done
+rm -f /var/log/rtx-power.log    # optional; also delete the repo's work/ clones
+reboot
+```
+
+The `vbios-override` folder holds your image. Keep a copy first if you want it again.
 
 ## Keep this current
 
