@@ -36,6 +36,8 @@ start_users() {
 say "=== start on $K"
 [ "$(modinfo -n nvidia)" = "/lib/modules/$K/extra/vix/nvidia.ko" ] || { say "nvidia does not resolve to extra/vix for $K"; say SWAP-ABORTED; exit 1; }
 grep -q RmLinuxVbiosOverrideImage /etc/modprobe.d/*.conf || { say "no RmLinuxVbiosOverrideImage option in modprobe.d"; say SWAP-ABORTED; exit 1; }
+IMG=$(sed -n 's/.*RmLinuxVbiosOverrideImage=\([^";]*\).*/\1/p' /etc/modprobe.d/*.conf | head -1)
+[ -f "/lib/firmware/nvidia/$IMG" ] || { say "image /lib/firmware/nvidia/$IMG not found; fix the modprobe.d path"; say SWAP-ABORTED; exit 1; }
 for c in $STOP_CONTAINERS; do docker stop -t 60 "$c" >/dev/null && say "$c stopped"; done
 for s in $STOP_SERVICES; do systemctl stop "$s"; done
 for n in $KILL_COMMS; do for pid in $(holders | awk -v n="$n" '$2==n{print $1}'); do kill -TERM "$pid"; done; done
