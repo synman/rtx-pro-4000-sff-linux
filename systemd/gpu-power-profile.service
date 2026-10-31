@@ -1,0 +1,16 @@
+# Apply the power limit and clock offsets at boot, only when the VBIOS override is live.
+# Install: copy the repo to /opt/rtx-power, then systemctl enable gpu-power-profile.service
+# Nothing else is needed at boot: depmod picks the vix modules and modprobe.d passes the image.
+[Unit]
+Description=RTX power profile (limit + clock offsets) when the VBIOS override is live
+After=nvidia-persistenced.service
+Wants=nvidia-persistenced.service
+RequiresMountsFor=/opt/rtx-power
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/rtx-power/scripts/gpu-power-profile.sh /etc/rtx-power.conf
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

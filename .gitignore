@@ -1,0 +1,4 @@
+work/
+*.bin
+*.rom
+__pycache__/

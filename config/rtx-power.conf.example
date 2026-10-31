@@ -1,0 +1,15 @@
+# rtx-power configuration, read by gpu-power-profile.sh and swap-live.sh. Copy to /etc/rtx-power.conf and edit.
+# Every value is hardware-specific. The reference card's are in the comments.
+
+GPU_INDEX=0                 # nvidia-smi index of the card
+POWER_LIMIT_W=              # Reference: 90. Applied only if the override raised max_limit at least this far.
+MEM_OFFSET=0                # NVML memory clock offset, double-data-rate units. Reference: 3599 (~ +20%)
+GFX_OFFSET=0                # NVML graphics clock offset in MHz. Reference: 0
+
+# Everything that holds /dev/nvidia*. swap-live.sh stops these, swaps the modules, and starts them again.
+STOP_CONTAINERS=""          # docker container names, space separated
+STOP_SERVICES="nvidia-persistenced.service"
+HEALTH_CONTAINER=""         # optional: wait for this container's healthcheck after the restart
+KILL_COMMS="btop nvtop"     # processes still holding /dev/nvidia*, killed by name
+
+LOG=/var/log/rtx-power.log
