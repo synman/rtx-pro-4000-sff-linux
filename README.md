@@ -5,8 +5,8 @@ The card reads an edited VBIOS image from system RAM at driver load, and the EEP
 The pieces here make that survive reboots and fall back to stock safely. A kernel update needs one rebuild before you reboot into it.
 
 Maintained by synman. Tested on Debian 13 with NVIDIA's apt-repo driver `615.71.10`, kernels `7.2.9` and `7.2.11` from trixie-backports, Secure Boot on.
-`build-vix-modules.sh` was run from this repo on that host and produced signed modules carrying the override.
-`install-vix-modules.sh` and `swap-live.sh` repeat the steps done by hand there, but these exact versions have not yet been run.
+On 2026-10-31 the three scripts were run from this repo on that host, on kernel `7.2.11`: build, install, then a live swap.
+It ended `SWAP-OK` with power limit 90 W, memory offset 3598, and no Xid or AER errors. The model container came back healthy.
 
 > **Warning.** This card has no auxiliary power connector, so everything above 70 W comes through the PCIe slot.
 > The slot is specified for 75 W. 90 W is about 7.5 A on 12 V against a 5.5 A pin budget. You own that risk.
